@@ -86,27 +86,31 @@ namespace BarDecoder
 
         public void StartDecode()
         {
+
             if (_port != null && _port.IsOpen)
             {
                 _port.Close();
                 _port.Dispose();
             }
             var ports = SerialPort.GetPortNames();
+            if (ports.Length != 0)
+            {
+                //for (int i = 0; i < ports.Length; i++)
+                //{
+                //    Console.WriteLine("{0}: {1}", i, ports[i]);
+                //}
+                //Console.Write("Выберите порт:> ");
+                //var pi = int.Parse(Console.ReadLine());
 
-            //for (int i = 0; i < ports.Length; i++)
-            //{
-            //    Console.WriteLine("{0}: {1}", i, ports[i]);
-            //}
-            //Console.Write("Выберите порт:> ");
-            //var pi = int.Parse(Console.ReadLine());
+                _port = new SerialPort();
+                _port.PortName = ports[0];
 
-            _port = new SerialPort();
-            _port.PortName = ports[0];
-
-            _port.Open();
-            _port.DataReceived += Receiver;
-            //while (!IsBarcodeDecode) ;
+                _port.Open();
+                _port.DataReceived += Receiver;
+                //while (!IsBarcodeDecode) ;
+            }
         }
+
 
         public void StopDecode()
         {
@@ -157,15 +161,15 @@ namespace BarDecoder
                         Bytecode = (byte[])values[6]
                     };
 
+                    onBarcodeDecode(this, BarcodeData);
                     IsBarcodeDecode = true;
-                    //onBarcodeDecode(this, BarcodeData);
-                    Console.WriteLine(BarcodeData.code_type_Barcode);
-                    Console.WriteLine(BarcodeData.number_Policy);
-                    Console.WriteLine(BarcodeData.FullName);
-                    Console.WriteLine(BarcodeData.Gender);
-                    Console.WriteLine(BarcodeData.Date_of_Birth);
-                    Console.WriteLine(BarcodeData._Date);
-                    Console.WriteLine(BitConverter.ToString(BarcodeData.Bytecode));
+                    //Console.WriteLine(BarcodeData.code_type_Barcode);
+                    //Console.WriteLine(BarcodeData.number_Policy);
+                    //Console.WriteLine(BarcodeData.FullName);
+                    //Console.WriteLine(BarcodeData.Gender);
+                    //Console.WriteLine(BarcodeData.Date_of_Birth);
+                    //Console.WriteLine(BarcodeData._Date);
+                    //Console.WriteLine(BitConverter.ToString(BarcodeData.Bytecode));
                 }
             }
 
