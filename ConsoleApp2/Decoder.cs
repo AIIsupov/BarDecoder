@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO.Ports;
 using System.Linq;
-using System.Text;
 using Barcode.Converters;
-
 
 namespace BarDecoder
 {
@@ -58,12 +55,12 @@ namespace BarDecoder
             /// <summary>
             /// Дата рождения
             /// </summary>
-            public DateTime Date_of_Birth { get; set; }
+            public string Date_of_Birth { get; set; }
 
             /// <summary>
             /// Дата ???
             /// </summary>
-            public DateTime _Date { get; set; }
+            public string _Date { get; set; }
 
             /// <summary>
             /// ЭЦП
@@ -74,6 +71,7 @@ namespace BarDecoder
         public delegate void BarcodeDecode(Decoder decoder, BarcodeValue data);
         public event BarcodeDecode onBarcodeDecode;
 
+        private static string nameBarDec = "BarDecoder: ";
         private static SerialPort _port;
         public bool validBarcode; // Если штрих-код соответствует формату штрих-кодов Полисов ОМС, то возвращает true 
         public bool IsBarcodeDecode = false;
@@ -86,36 +84,65 @@ namespace BarDecoder
 
         public void StartDecode()
         {
-
-            if (_port != null && _port.IsOpen)
+            Console.WriteLine(nameBarDec+"Запуск декодера");
+            try
             {
-                _port.Close();
-                _port.Dispose();
+                if (_port != null && _port.IsOpen)
+                {
+                    _port.Close();
+                    _port.Dispose();
+                    Console.WriteLine(nameBarDec + "Порт был намеренно закрыт для перезапуска");
+                }
+                var ports = SerialPort.GetPortNames();
+                if (ports.Length != 0)
+                {
+                    //Console.WriteLine(nameBarDec + "Доступные порты");
+                    //for (int i = 0; i < ports.Length; i++)
+                    //{
+                    //    Console.WriteLine("{0}: {1}", i, ports[i]);
+                    //}
+                    //Console.Write(nameBarDec + "Выберите порт:> ");
+                    //var pi = int.Parse(Console.ReadLine());
+
+                    _port = new SerialPort();
+                    for (int i = 0; i< ports.Length; i++)
+                    {
+                        try
+                        {
+                            _port.PortName = ports[i];
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(nameBarDec+ex);
+                        }
+                    }
+
+                    _port.Open();
+                    Console.WriteLine(nameBarDec + "Порт Открыт");
+
+                    _port.DataReceived += Receiver;
+                    //while (!IsBarcodeDecode) ;
+                }
+                else
+                {
+                    Console.WriteLine(nameBarDec + "Подключения не обнаружены");
+                }
             }
-            var ports = SerialPort.GetPortNames();
-            if (ports.Length != 0)
+            catch (Exception ex)
             {
-                //for (int i = 0; i < ports.Length; i++)
-                //{
-                //    Console.WriteLine("{0}: {1}", i, ports[i]);
-                //}
-                //Console.Write("Выберите порт:> ");
-                //var pi = int.Parse(Console.ReadLine());
-
-                _port = new SerialPort();
-                _port.PortName = ports[0];
-
-                _port.Open();
-                _port.DataReceived += Receiver;
-                //while (!IsBarcodeDecode) ;
+                Console.WriteLine(nameBarDec + ex.ToString());
             }
         }
 
 
         public void StopDecode()
         {
-            _port.Close();
-            _port.Dispose();
+            if (_port != null && _port.IsOpen)
+            {
+                _port.Close();
+                _port.Dispose();
+                Console.WriteLine(nameBarDec + "Остановлен");
+            }
         }
 
         private void Receiver(object sender, SerialDataReceivedEventArgs e)
@@ -156,23 +183,36 @@ namespace BarDecoder
                         Name = fullname[1],
                         Middle_Name = fullname[2],
                         Gender = Convert.ToInt32(values[3]),
-                        Date_of_Birth = Convert.ToDateTime(values[4]),
-                        _Date = Convert.ToDateTime(values[5]),
+                        Date_of_Birth = Convert.ToDateTime(values[4]).ToShortDateString(),
+                        _Date = Convert.ToDateTime(values[5]).ToShortDateString(),
                         Bytecode = (byte[])values[6]
                     };
 
-                    onBarcodeDecode(this, BarcodeData);
+                    Console.WriteLine(nameBarDec + "Полученные данные:");
+                    Console.WriteLine(nameBarDec + BarcodeData.code_type_Barcode);
+                    Console.WriteLine(nameBarDec + BarcodeData.number_Policy);
+                    Console.WriteLine(nameBarDec + BarcodeData.FullName);
+                    Console.WriteLine(nameBarDec + BarcodeData.Gender);
+                    Console.WriteLine(nameBarDec + BarcodeData.Date_of_Birth);
+                    Console.WriteLine(nameBarDec + BarcodeData._Date);
+                    Console.WriteLine(nameBarDec + BitConverter.ToString(BarcodeData.Bytecode));
+
+                    try
+                    {
+                        onBarcodeDecode(this, BarcodeData);
+                    }
+                    catch(NullReferenceException ex)
+                    { 
+                        Console.WriteLine(nameBarDec+ ex);
+                    }
                     IsBarcodeDecode = true;
-                    //Console.WriteLine(BarcodeData.code_type_Barcode);
-                    //Console.WriteLine(BarcodeData.number_Policy);
-                    //Console.WriteLine(BarcodeData.FullName);
-                    //Console.WriteLine(BarcodeData.Gender);
-                    //Console.WriteLine(BarcodeData.Date_of_Birth);
-                    //Console.WriteLine(BarcodeData._Date);
-                    //Console.WriteLine(BitConverter.ToString(BarcodeData.Bytecode));
                 }
             }
-
+            else
+            {
+                Console.WriteLine("Gabela");
+                Console.WriteLine(nameBarDec + @"Что-то не так ¯\_(ツ)_/¯");
+            }
         }
 
         private static object GetObject(byte[] data,ITypeConverter converter,Type type,ref int offset)
