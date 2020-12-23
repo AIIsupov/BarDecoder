@@ -72,7 +72,7 @@ namespace BarDecoder
         public event BarcodeDecode onBarcodeDecode;
 
         private static string nameBarDec = "BarDecoder: ";
-        private static SerialPort _port;
+        private static List<SerialPort> _port;
         public bool validBarcode; // Если штрих-код соответствует формату штрих-кодов Полисов ОМС, то возвращает true 
         public bool IsBarcodeDecode = false;
         public BarcodeValue BarcodeData; // Хранит информацию по последнему прочитанному штрих-коду
@@ -87,13 +87,8 @@ namespace BarDecoder
             Console.WriteLine(nameBarDec+"Запуск декодера");
             try
             {
-                if (_port != null && _port.IsOpen)
-                {
-                    _port.Close();
-                    _port.Dispose();
-                    Console.WriteLine(nameBarDec + "Порт был намеренно закрыт для перезапуска");
-                }
-                var ports = SerialPort.GetPortNames();
+                StopDecode();
+                string[] ports = SerialPort.GetPortNames();
                 if (ports.Length != 0)
                 {
                     //Console.WriteLine(nameBarDec + "Доступные порты");
@@ -104,23 +99,23 @@ namespace BarDecoder
                     //Console.Write(nameBarDec + "Выберите порт:> ");
                     //var pi = int.Parse(Console.ReadLine());
 
-                    _port = new SerialPort();
+                    _port = new List<SerialPort>();
                     for (int i = 0; i< ports.Length; i++)
                     {
+                        
+                        _port.Add(new SerialPort());
                         try
                         {
-                            _port.PortName = ports[i];
+                            _port[i].PortName = ports[i];
+                            _port[i].Open();
+                            Console.WriteLine(nameBarDec + "{0} Открыт", _port[i].PortName);
+                            _port[i].DataReceived += Receiver;
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine(nameBarDec+ex);
                         }
                     }
-
-                    _port.Open();
-                    Console.WriteLine(nameBarDec + "Порт Открыт");
-
-                    _port.DataReceived += Receiver;
                     //while (!IsBarcodeDecode) ;
                 }
                 else
@@ -134,13 +129,20 @@ namespace BarDecoder
             }
         }
 
+        public int GetPortCount()
+        {
+            return SerialPort.GetPortNames().Length;
+        }
 
         public void StopDecode()
         {
-            if (_port != null && _port.IsOpen)
+            if (_port != null && _port[0].IsOpen)
             {
-                _port.Close();
-                _port.Dispose();
+                for(int i = 0; i< _port.Count; i++)
+                {
+                    _port[i].Close();
+                    _port[i].Dispose();
+                }
                 Console.WriteLine(nameBarDec + "Остановлен");
             }
         }
@@ -150,20 +152,24 @@ namespace BarDecoder
             if (e.EventType != SerialData.Eof)
             {
                 IsBarcodeDecode = false;
-
-                int bytesToRead = _port.BytesToRead;
-                byte[] buf = new byte[bytesToRead];
-
-                _port.Read(buf, 0, bytesToRead);
-
-                validBarcode = BarcodeVersions.IsValidBarcode(buf);
-                BarcodeVersion barcodeVersion = BarcodeVersions.GetBarcodeVersion(buf);
-
-                if (validBarcode)
+                byte[] buf = null;
+                for (int i = 0; i < _port.Count; i++)
                 {
-                    int offset = 0;
-                    object[] values = new object[7]
+                    if (_port[i].BytesToRead != 0)
                     {
+                        int bytesToRead = _port[i].BytesToRead;
+                        buf = new byte[bytesToRead];
+
+                        _port[i].Read(buf, 0, bytesToRead);
+
+                        validBarcode = BarcodeVersions.IsValidBarcode(buf);
+                        BarcodeVersion barcodeVersion = BarcodeVersions.GetBarcodeVersion(buf);
+
+                        if (validBarcode)
+                        {
+                            int offset = 0;
+                            object[] values = new object[7]
+                            {
                     GetObject(buf, _cnvs[typeof (NumberConverter)], typeof (byte), ref offset),
                     GetObject(buf, _cnvs[typeof (NumberConverter)], typeof (ulong), ref offset),
                     GetObject(buf, _cnvs[typeof (OMS62EncodingStringConverter)], typeof (string), ref offset, 51),
@@ -171,41 +177,43 @@ namespace BarDecoder
                     GetObject(buf, _cnvs[typeof (ShortBirthDateConverter)], typeof (DateTime), ref offset),
                     GetObject(buf, _cnvs[typeof (ShortBirthDateConverter)], typeof (DateTime), ref offset),
                     ((IEnumerable<byte>) buf).ToList<byte>().GetRange(offset, barcodeVersion.Length - offset).ToArray() // электронная подпись
-                    };
+                            };
 
-                    string[] fullname = values[2].ToString().Split('|');
-                    BarcodeData = new BarcodeValue
-                    {
-                        code_type_Barcode = Convert.ToInt32(values[0]),
-                        number_Policy = Convert.ToInt64(values[1]),
-                        FullName = String.Format("{0} {1} {2}", fullname[0], fullname[1], fullname[2]),
-                        Surname = fullname[0],
-                        Name = fullname[1],
-                        Middle_Name = fullname[2],
-                        Gender = Convert.ToInt32(values[3]),
-                        Date_of_Birth = Convert.ToDateTime(values[4]).ToShortDateString(),
-                        _Date = Convert.ToDateTime(values[5]).ToShortDateString(),
-                        Bytecode = (byte[])values[6]
-                    };
+                            string[] fullname = values[2].ToString().Split('|');
+                            BarcodeData = new BarcodeValue
+                            {
+                                code_type_Barcode = Convert.ToInt32(values[0]),
+                                number_Policy = Convert.ToInt64(values[1]),
+                                FullName = String.Format("{0} {1} {2}", fullname[0], fullname[1], fullname[2]),
+                                Surname = fullname[0],
+                                Name = fullname[1],
+                                Middle_Name = fullname[2],
+                                Gender = Convert.ToInt32(values[3]),
+                                Date_of_Birth = Convert.ToDateTime(values[4]).ToShortDateString(),
+                                _Date = Convert.ToDateTime(values[5]).ToShortDateString(),
+                                Bytecode = (byte[])values[6]
+                            };
 
-                    Console.WriteLine(nameBarDec + "Полученные данные:");
-                    Console.WriteLine(nameBarDec + BarcodeData.code_type_Barcode);
-                    Console.WriteLine(nameBarDec + BarcodeData.number_Policy);
-                    Console.WriteLine(nameBarDec + BarcodeData.FullName);
-                    Console.WriteLine(nameBarDec + BarcodeData.Gender);
-                    Console.WriteLine(nameBarDec + BarcodeData.Date_of_Birth);
-                    Console.WriteLine(nameBarDec + BarcodeData._Date);
-                    Console.WriteLine(nameBarDec + BitConverter.ToString(BarcodeData.Bytecode));
+                            Console.WriteLine(Environment.NewLine+nameBarDec + "Полученные данные от {0}:", _port[i].PortName);
+                            Console.WriteLine(nameBarDec + BarcodeData.code_type_Barcode);
+                            Console.WriteLine(nameBarDec + BarcodeData.number_Policy);
+                            Console.WriteLine(nameBarDec + BarcodeData.FullName);
+                            Console.WriteLine(nameBarDec + BarcodeData.Gender);
+                            Console.WriteLine(nameBarDec + BarcodeData.Date_of_Birth);
+                            Console.WriteLine(nameBarDec + BarcodeData._Date);
+                            Console.WriteLine(nameBarDec + BitConverter.ToString(BarcodeData.Bytecode));
 
-                    try
-                    {
-                        onBarcodeDecode(this, BarcodeData);
+                            try
+                            {
+                                onBarcodeDecode(this, BarcodeData);
+                            }
+                            catch (NullReferenceException ex)
+                            {
+                                Console.WriteLine(nameBarDec + ex);
+                            }
+                            IsBarcodeDecode = true;
+                        }
                     }
-                    catch(NullReferenceException ex)
-                    { 
-                        Console.WriteLine(nameBarDec+ ex);
-                    }
-                    IsBarcodeDecode = true;
                 }
             }
             else
