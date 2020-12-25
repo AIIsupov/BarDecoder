@@ -71,7 +71,7 @@ namespace BarDecoder
         public delegate void BarcodeDecode(Decoder decoder, BarcodeValue data);
         public event BarcodeDecode onBarcodeDecode;
 
-        private static string nameBarDec = "BarDecoder: ";
+        private static string nameBarDec = "BarDecoder:> ";
         private static List<SerialPort> _port;
         public bool validBarcode; // Если штрих-код соответствует формату штрих-кодов Полисов ОМС, то возвращает true 
         public bool IsBarcodeDecode = false;
@@ -136,15 +136,17 @@ namespace BarDecoder
 
         public void StopDecode()
         {
-            if (_port != null && _port[0].IsOpen)
+            for (int i = 0; i < _port.Count; i++)
             {
-                for(int i = 0; i< _port.Count; i++)
+                if (_port != null && _port[i].IsOpen)
                 {
+                    _port[i].DiscardInBuffer();
                     _port[i].Close();
                     _port[i].Dispose();
+                    Console.WriteLine(nameBarDec + "{0} Остановлен", _port[i].PortName);
                 }
-                Console.WriteLine(nameBarDec + "Остановлен");
             }
+            
         }
 
         private void Receiver(object sender, SerialDataReceivedEventArgs e)
@@ -194,7 +196,7 @@ namespace BarDecoder
                                 Bytecode = (byte[])values[6]
                             };
 
-                            Console.WriteLine(Environment.NewLine+nameBarDec + "Полученные данные от {0}:", _port[i].PortName);
+                            Console.WriteLine(Environment.NewLine + DateTime.Now.ToLocalTime().ToString() + nameBarDec + "Полученные данные от {0}:", _port[i].PortName);
                             Console.WriteLine(nameBarDec + BarcodeData.code_type_Barcode);
                             Console.WriteLine(nameBarDec + BarcodeData.number_Policy);
                             Console.WriteLine(nameBarDec + BarcodeData.FullName);
@@ -212,6 +214,7 @@ namespace BarDecoder
                                 Console.WriteLine(nameBarDec + ex);
                             }
                             IsBarcodeDecode = true;
+                            _port[i].DiscardInBuffer();
                         }
                     }
                 }

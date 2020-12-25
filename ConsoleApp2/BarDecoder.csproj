@@ -6,6 +6,12 @@
     <AssemblyName>BarDecoder</AssemblyName>
     <RootNamespace>BarDecoder</RootNamespace>
     <StartupObject>BarDecoder.Decoder</StartupObject>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <Authors>AIIsupov</Authors>
+    <Company></Company>
+    <Product />
+    <Description>Расшифруй штрих-код полиса ОМС!</Description>
+    <RepositoryUrl>https://github.com/AIIsupov/BarDecoder</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
