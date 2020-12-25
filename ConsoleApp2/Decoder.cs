@@ -84,7 +84,7 @@ namespace BarDecoder
 
         public void StartDecode()
         {
-            Console.WriteLine(nameBarDec+"Запуск декодера");
+            Console.WriteLine(nameBarDec + "Запуск декодера");
             try
             {
                 StopDecode();
@@ -100,9 +100,9 @@ namespace BarDecoder
                     //var pi = int.Parse(Console.ReadLine());
 
                     _port = new List<SerialPort>();
-                    for (int i = 0; i< ports.Length; i++)
+                    for (int i = 0; i < ports.Length; i++)
                     {
-                        
+
                         _port.Add(new SerialPort());
                         try
                         {
@@ -113,7 +113,7 @@ namespace BarDecoder
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine(nameBarDec+ex);
+                            Console.WriteLine(nameBarDec + ex);
                         }
                     }
                     //while (!IsBarcodeDecode) ;
@@ -136,17 +136,19 @@ namespace BarDecoder
 
         public void StopDecode()
         {
-            for (int i = 0; i < _port.Count; i++)
+            if (_port != null)
             {
-                if (_port != null && _port[i].IsOpen)
+                for (int i = 0; i < _port.Count; i++)
                 {
-                    _port[i].DiscardInBuffer();
-                    _port[i].Close();
-                    _port[i].Dispose();
-                    Console.WriteLine(nameBarDec + "{0} Остановлен", _port[i].PortName);
+                    if (_port[i].IsOpen)
+                    {
+                        _port[i].DiscardInBuffer();
+                        _port[i].Close();
+                        _port[i].Dispose();
+                        Console.WriteLine(nameBarDec + "{0} Остановлен", _port[i].PortName);
+                    }
                 }
             }
-            
         }
 
         private void Receiver(object sender, SerialDataReceivedEventArgs e)
@@ -196,7 +198,7 @@ namespace BarDecoder
                                 Bytecode = (byte[])values[6]
                             };
 
-                            Console.WriteLine(Environment.NewLine + DateTime.Now.ToLocalTime().ToString() + nameBarDec + "Полученные данные от {0}:", _port[i].PortName);
+                            Console.WriteLine(Environment.NewLine + DateTime.Now.ToLocalTime().ToString() + " " + nameBarDec + "Полученные данные от {0}:", _port[i].PortName);
                             Console.WriteLine(nameBarDec + BarcodeData.code_type_Barcode);
                             Console.WriteLine(nameBarDec + BarcodeData.number_Policy);
                             Console.WriteLine(nameBarDec + BarcodeData.FullName);

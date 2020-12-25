@@ -12,6 +12,7 @@
     <Product />
     <Description>Расшифруй штрих-код полиса ОМС!</Description>
     <RepositoryUrl>https://github.com/AIIsupov/BarDecoder</RepositoryUrl>
+    <Version>1.0.0.2</Version>
   </PropertyGroup>
 
   <ItemGroup>
