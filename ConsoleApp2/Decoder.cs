@@ -102,7 +102,6 @@ namespace BarDecoder
                     _port = new List<SerialPort>();
                     for (int i = 0; i < ports.Length; i++)
                     {
-
                         _port.Add(new SerialPort());
                         try
                         {
@@ -110,13 +109,15 @@ namespace BarDecoder
                             _port[i].Open();
                             Console.WriteLine(nameBarDec + "{0} Открыт", _port[i].PortName);
                             _port[i].DataReceived += Receiver;
+                            _port[i].ErrorReceived += ErrorReceived;
+                            _port[i].PinChanged += PinChanged;
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine(nameBarDec + ex);
                         }
                     }
-                    //while (!IsBarcodeDecode) ;
+                    //while (!IsBarcodeDecode);
                 }
                 else
                 {
@@ -153,18 +154,19 @@ namespace BarDecoder
 
         private void Receiver(object sender, SerialDataReceivedEventArgs e)
         {
+            Console.WriteLine(nameBarDec + "Получены данные");
             if (e.EventType != SerialData.Eof)
             {
                 IsBarcodeDecode = false;
                 byte[] buf = null;
-                for (int i = 0; i < _port.Count; i++)
+                foreach (SerialPort port in _port)
                 {
-                    if (_port[i].BytesToRead != 0)
+                    if (port.BytesToRead != 0)
                     {
-                        int bytesToRead = _port[i].BytesToRead;
+                        int bytesToRead = port.BytesToRead;
                         buf = new byte[bytesToRead];
 
-                        _port[i].Read(buf, 0, bytesToRead);
+                        port.Read(buf, 0, bytesToRead);
 
                         validBarcode = BarcodeVersions.IsValidBarcode(buf);
                         BarcodeVersion barcodeVersion = BarcodeVersions.GetBarcodeVersion(buf);
@@ -198,7 +200,7 @@ namespace BarDecoder
                                 Bytecode = (byte[])values[6]
                             };
 
-                            Console.WriteLine(Environment.NewLine + DateTime.Now.ToLocalTime().ToString() + " " + nameBarDec + "Полученные данные от {0}:", _port[i].PortName);
+                            Console.WriteLine(Environment.NewLine + DateTime.Now.ToLocalTime().ToString() + " " + nameBarDec + "Полученные данные от {0}:", port.PortName);
                             Console.WriteLine(nameBarDec + BarcodeData.code_type_Barcode);
                             Console.WriteLine(nameBarDec + BarcodeData.number_Policy);
                             Console.WriteLine(nameBarDec + BarcodeData.FullName);
@@ -213,10 +215,10 @@ namespace BarDecoder
                             }
                             catch (NullReferenceException ex)
                             {
-                                Console.WriteLine(nameBarDec + ex);
+                                Console.WriteLine(nameBarDec + ex.Message);
                             }
                             IsBarcodeDecode = true;
-                            _port[i].DiscardInBuffer();
+                            port.DiscardInBuffer();
                         }
                     }
                 }
@@ -224,8 +226,26 @@ namespace BarDecoder
             else
             {
                 Console.WriteLine("Gabela");
-                Console.WriteLine(nameBarDec + @"Что-то не так ¯\_(ツ)_/¯");
+                Console.WriteLine(nameBarDec + @"Нет, это не данные!");
             }
+        }
+
+
+        private void ErrorReceived(object sender, SerialErrorReceivedEventArgs e)
+        {
+            foreach(SerialPort port in _port)
+            {
+                if (port.BytesToRead != 0)
+                {
+                    Console.WriteLine(nameBarDec + "ОГО \n" + port.ReadLine());
+                }                
+            }                
+        }
+
+
+        private void PinChanged(object sender, SerialPinChangedEventArgs e)
+        {
+            Console.WriteLine(nameBarDec + "Это что-то другое");
         }
 
         private static object GetObject(byte[] data,ITypeConverter converter,Type type,ref int offset)

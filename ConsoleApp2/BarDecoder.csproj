@@ -12,11 +12,13 @@
     <Product />
     <Description>Расшифруй штрих-код полиса ОМС!</Description>
     <RepositoryUrl>https://github.com/AIIsupov/BarDecoder</RepositoryUrl>
-    <Version>1.0.0.2</Version>
+    <Version>1.0.0.3</Version>
+    <AssemblyVersion>1.0.0.3</AssemblyVersion>
+    <FileVersion>1.0.0.3</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.IO.Ports" Version="5.0.0" />
+    <PackageReference Include="System.IO.Ports" Version="5.0.1" />
   </ItemGroup>
 
 </Project>
